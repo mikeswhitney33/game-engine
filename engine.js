@@ -1,7 +1,7 @@
 class Vector2 {
     constructor(x, y) {
-        this.x = x;
-        this.y = y;
+        this.x = x || 0;
+        this.y = y || 0;
     }
 
     toString() {
@@ -56,11 +56,11 @@ class Matrix3 {
     }
 
     static TransformPoint(matrix, point) {
-        return new Matrix3.Transform(matrix, point, 1);
+        return Matrix3.Transform(matrix, point, 1);
     }
 
     static TransformVector(matrix, vector) {
-        return new Matrix3.Transform(matrix, vector, 0);
+        return Matrix3.Transform(matrix, vector, 0);
     }
 
     static Matmul(matrix1, matrix2) {
@@ -106,16 +106,54 @@ class Transform {
     }
 }
 
+class Component {
+    constructor() {
+    }
+
+    update(gameObject, delta_time) {}
+
+    draw(ctx, current_matrix) {}
+}
+
+class RectangleSprite extends Component {
+    constructor(fill_color, stroke_color, stroke_width) {
+        super();
+        this.fill_color = fill_color || "#FFFFFF";
+        this.stroke_color = stroke_color || "#000000";
+        this.stroke_width = stroke_width || 1;
+    }
+
+    draw(ctx, current_matrix) {
+        const p0 = Matrix3.TransformPoint(current_matrix, new Vector2(0, 0));
+        const p1 = Matrix3.TransformPoint(current_matrix, new Vector2(1, 0));
+        const p2 = Matrix3.TransformPoint(current_matrix, new Vector2(1, 1));
+        const p3 = Matrix3.TransformPoint(current_matrix, new Vector2(0, 1));
+
+        ctx.beginPath()
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.lineTo(p0.x, p1.y);
+        ctx.closePath();
+        ctx.fillStyle = this.fill_color;
+        ctx.strokeStyle = this.stroke_color;
+        ctx.stroekWidth = this.stroke_width;
+        ctx.stroke();
+        ctx.fill();
+    }
+}
+
 class GameObject {
-    constructor(name, transform, components, children) {
-        this.name = name || "Untitled";
-        this.transform = transform || Transform.Identity2();
-        this.components = components || [];
-        this.children = children || [];
+    constructor(args) {
+        this.name = args.name || "Untitled";
+        this.transform = args.transform || Transform.Identity2();
+        this.components = args.components || [];
+        this.children = args.children || [];
     }
 
     update(delta_time) {
-        for(const component of components) {
+        for(const component of this.components) {
             component.update(this, delta_time);
         }
         for(const child of this.children) {
@@ -125,7 +163,7 @@ class GameObject {
 
     draw(ctx, current_matrix) {
         current_matrix = Matrix3.Matmul(current_matrix, this.transform.get_matrix());
-        for(const component of components) {
+        for(const component of this.components) {
             component.draw(ctx, current_matrix);
         }
         for(const child of this.children) {
@@ -151,6 +189,8 @@ class Game {
 
     play_game() {
         this.set_title();
+        const self = this;
+        this.game_loop(self);
     }
 
     update(delta_time) {
@@ -166,12 +206,14 @@ class Game {
         }
     }
 
-    game_loop() {
-        const time = Data.now();
-        const delta_time = time - this.last_time;
-        this.last_time = time;
-        this.update(delta_time);
-        this.draw();
-        requestAnimationFrame(game_loop);
+    game_loop(self) {
+        const time = Date.now();
+        const delta_time = time - self.last_time;
+        self.last_time = time;
+        self.update(delta_time);
+        self.draw();
+        requestAnimationFrame(() => {
+            self.game_loop(self)
+        });
     }
 }
