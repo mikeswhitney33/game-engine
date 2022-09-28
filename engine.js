@@ -1,6 +1,6 @@
 class Game {
     constructor(selector, options) {
-        this.options = options;
+        this.options = options || {};
         this.selector = selector;
         this.canvas = document.querySelector(selector);
         this.ctx = this.canvas.getContext("2d");
