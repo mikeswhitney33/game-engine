@@ -1,7 +1,25 @@
+class Input {
+    static keys_down = new Object();
+    static keys_pressed = new Object();
+    static IsKeyDown(key) {
+        return Input.keys_down[key] || false;
+    }
+    static IsKeyPressed(key) {
+        return Input.keys_pressed[key] || false;
+    }
+    static IsKeyUp(key) {
+        return !Input.IsKeyDown(key);
+    }
+}
+
 class Vector2 {
     constructor(x, y) {
         this.x = x || 0;
         this.y = y || 0;
+    }
+
+    copy() {
+        return new Vector2(this.x, this.y);
     }
 
     toString() {
@@ -108,6 +126,7 @@ class Transform {
 
 class Component {
     constructor() {
+
     }
 
     update(gameObject, delta_time) {}
@@ -150,6 +169,7 @@ class GameObject {
         this.transform = args.transform || Transform.Identity2();
         this.components = args.components || [];
         this.children = args.children || [];
+        this.tag = args.tag || null;
     }
 
     update(delta_time) {
@@ -173,29 +193,47 @@ class GameObject {
 }
 
 class Game {
-    constructor(selector, options, gameObjects) {
+    constructor(selector, args) {
+        args = args || {};
         this.selector = selector;
-        this.options = options || {};
-        this.gameObjects = gameObjects || [];
+        this.title = args.title || window.title;
+
+        this.gameObjects = args.gameObjects || [];
 
         this.canvas = document.querySelector(selector);
-        this.ctx = this.canvas.getContext(this.options.context || "2d");
+        this.ctx = this.canvas.getContext(args.context || "2d");
         this.last_time = Date.now();
     }
 
     set_title() {
-        document.querySelector("title").innerHTML = this.options.title || "Untitled Game";
+        window.title = this.title;
+    }
+
+    setup_inputs() {
+        window.addEventListener("keydown", (event) => {
+            if(!(Input.keys_down[event.key] || false)) {
+                Input.keys_pressed[event.key] = true;
+            }
+            Input.keys_down[event.key] = true;
+        });
+        window.addEventListener("keyup", (event) => {
+            Input.keys_pressed[event.key] = false;
+            Input.keys_down[event.key] = false;
+        });
     }
 
     play_game() {
         this.set_title();
-        const self = this;
-        this.game_loop(self);
+        this.setup_inputs();
+        this.game_loop(this);
     }
 
     update(delta_time) {
         for(const gameObject of this.gameObjects) {
             gameObject.update(delta_time);
+        }
+        for (const key of Object.keys(Input.keys_pressed)) {
+            Input.keys_pressed[key] = false;
         }
     }
 
@@ -208,7 +246,7 @@ class Game {
 
     game_loop(self) {
         const time = Date.now();
-        const delta_time = time - self.last_time;
+        const delta_time = (time - self.last_time) / 1000;
         self.last_time = time;
         self.update(delta_time);
         self.draw();
